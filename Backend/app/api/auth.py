@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from app.services.auth_service import login_user, register_user
@@ -17,6 +18,13 @@ async def register(user: RegisterRequest):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest):
-    """Login with email and password. Returns a JWT access token."""
-    return await login_user(credentials)
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Login with email and password. Returns a JWT access token.
+    
+    Note: The 'username' field here is your email address.
+    This format is required for Swagger UI compatibility.
+    """
+    # OAuth2PasswordRequestForm uses 'username' field — we treat it as email
+    credentials = LoginRequest(email=form_data.username, password=form_data.password)
+    return await login_user(credentials)
+
