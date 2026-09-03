@@ -19,10 +19,12 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    # Read allowed origins from the ALLOWED_ORIGINS env variable (comma-separated).
+    # Example: ALLOWED_ORIGINS=http://localhost:3000,https://recoverx.app
+    allow_origins=[o.strip() for o in settings.ALLOWED_ORIGINS.split(",")],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 app.include_router(auth_router)
