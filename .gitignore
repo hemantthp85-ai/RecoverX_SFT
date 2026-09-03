@@ -1,0 +1,25 @@
+# Python
+Backend/venv/
+Backend/venv_old/
+__pycache__/
+*.pyc
+
+# Environment secrets
+.env
+Backend/.env
+Frontend/.env
+
+# Flutter
+Frontend/.dart_tool/
+Frontend/build/
+Frontend/.flutter-plugins
+Frontend/.flutter-plugins-dependencies
+Frontend/.packages
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
