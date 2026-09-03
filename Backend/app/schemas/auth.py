@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -23,3 +23,16 @@ class RegisterRequest(BaseModel):
     sport_level: str | None = None
     position: str | None = None
     dominant_side: str | None = None
+
+    @model_validator(mode="after")
+    def passwords_must_match(self) -> "RegisterRequest":
+        if self.password != self.confirm_password:
+            raise ValueError("Passwords do not match")
+        if len(self.password) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        return self
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

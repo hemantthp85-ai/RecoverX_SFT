@@ -1,6 +1,6 @@
-from typing import Optional
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends
 
+from app.core.dependencies import get_current_user
 from app.db.database import get_database
 from app.models.sensor_analysis import (
     create_sensor_analysis_document,
@@ -25,8 +25,9 @@ router = APIRouter(
 @router.post("/api/telemetry")
 async def receive_telemetry(
     data: TelemetryData,
-    user_id: Optional[str] = Query(default="RecoverX_User"),
+    current_user: dict = Depends(get_current_user),
 ):
+
     """
     Ingests live sensor telemetry from ESP32-C3 Wearable or Frontend app.
     Evaluates safety, stores in MongoDB collections (sensor_telemetry & sensor_analysis),
@@ -63,7 +64,10 @@ async def receive_telemetry(
     # 5. Connect to MongoDB
     database = get_database()
 
-    # 6. Store exact telemetry document in sensor_telemetry collection
+    # 6. Extract authenticated user identity from JWT (cannot be spoofed)
+    user_id = current_user["user_id"]
+
+    # 7. Store exact telemetry document in sensor_telemetry collection
     telemetry_doc = create_sensor_telemetry_document(
         device_id=data.device_id,
         timestamp=data.timestamp,
@@ -78,7 +82,7 @@ async def receive_telemetry(
     )
     telemetry_result = database["sensor_telemetry"].insert_one(telemetry_doc)
 
-    # 7. Store analytical document in sensor_analysis collection for reporting
+    # 8. Store analytical document in sensor_analysis collection for reporting
     sensor_document = create_sensor_analysis_document(
         user_id=user_id,
         processed_data=processed_data,
@@ -96,4 +100,4 @@ async def receive_telemetry(
         "data": processed_data,
         "safety": safety_result,
         "recovery": recovery_result,
-    }
+    }
