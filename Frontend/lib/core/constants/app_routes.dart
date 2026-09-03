@@ -11,6 +11,7 @@ import '../../screens/progress/progress_screen.dart';
 import '../../screens/therapy/therapy_screen.dart';
 import '../../screens/reports/reports_screen.dart';
 import '../../screens/auth/login_screen.dart';
+import '../../screens/auth/register_screen.dart';
 
 class AppRoutes {
   AppRoutes._();
@@ -22,12 +23,7 @@ class AppRoutes {
   static const String therapy = '/therapy';
   static const String reports = '/reports';
   static const String login = '/login';
-
-  // ── Reserved (not yet built) ─────────────────────────────────
-  // static const String login = '/login';
-  // static const String register = '/register';
-  // static const String dashboard = '/dashboard';
-  // static const String profile = '/profile';
+  static const String register = '/register';
 
   // ── Route Generator ───────────────────────────────────────────
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
@@ -46,6 +42,8 @@ class AppRoutes {
         return _fade(const ReportsScreen());
       case login:
         return _fade(const LoginScreen());
+      case register:
+        return _fade(const RegisterScreen());
       default:
         return _fade(_notFound(settings.name));
     }

@@ -1,12 +1,15 @@
 // ============================================================
 // RecoverX — Login Screen
-// Clean, modern sports-performance & medical recovery Login UI.
-// Handles client-side email/password validation without fake auth.
+// Connected to backend: calls POST /auth/login, saves JWT token,
+// navigates to dashboard on success.
 // ============================================================
 
 import 'package:flutter/material.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/constants/app_routes.dart';
 import '../../core/theme/app_colors.dart';
+import '../../providers/user_session.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/common/rx_card.dart';
 import '../../widgets/common/rx_gradient_button.dart';
 
@@ -21,9 +24,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = AuthService();
 
   bool _obscurePassword = true;
   bool _isSubmitting = false;
+  String? _errorMessage;
 
   static final RegExp _emailRegex = RegExp(
     r'^[a-zA-Z0-9.\_%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
@@ -33,33 +38,46 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _authService.dispose();
     super.dispose();
   }
 
-  void _handleSignIn() async {
+  Future<void> _handleSignIn() async {
     if (_isSubmitting) return;
+    setState(() => _errorMessage = null);
 
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() => _isSubmitting = true);
+    if (!(_formKey.currentState?.validate() ?? false)) return;
 
-      // Brief UI feedback to demonstrate button responsiveness
-      await Future.delayed(const Duration(milliseconds: 400));
+    setState(() => _isSubmitting = true);
+
+    try {
+      // 1. Call backend login
+      final token = await _authService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      // 2. Persist session (token saved to SharedPreferences)
+      await UserSession.instance.setSession(
+        userId: _emailController.text.trim(),
+        email: _emailController.text.trim(),
+        authToken: token,
+      );
 
       if (!mounted) return;
 
-      setState(() => _isSubmitting = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Backend authentication service is not currently available.',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          backgroundColor: AppColors.info,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 4),
-        ),
+      // 3. Navigate to dashboard, clear navigation stack
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRoutes.shell,
+        (route) => false,
       );
+    } on AuthException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (_) {
+      setState(() =>
+          _errorMessage = 'Could not connect to server. Check your network.');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -69,37 +87,26 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (ctx) => AlertDialog(
         title: Text('Forgot Password?', style: AppTextStyles.headlineSmall),
         content: Text(
-          'Password reset service is not currently configured. Please contact your administrator or healthcare provider.',
+          'Password reset is not yet available in this version.\nPlease contact your administrator or healthcare provider.',
           style: AppTextStyles.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('OK', style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary)),
+            child: Text('OK',
+                style: AppTextStyles.labelLarge
+                    .copyWith(color: AppColors.primary)),
           ),
         ],
       ),
     );
   }
 
-  void _showCreateAccountDialog() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Create Account', style: AppTextStyles.headlineSmall),
-        content: Text(
-          'Account registration is handled via the backend endpoint (/auth/register). Contact your system administrator for access.',
-          style: AppTextStyles.bodyMedium,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Close', style: AppTextStyles.labelLarge.copyWith(color: AppColors.primary)),
-          ),
-        ],
-      ),
-    );
+
+  void _goToRegister() {
+    Navigator.of(context).pushNamed(AppRoutes.register);
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -174,8 +181,34 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: AppConstants.spaceXL),
 
+                // ── Error Banner ─────────────────────────────────────────
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(AppConstants.spaceMD),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppConstants.radiusMD),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
+                        const SizedBox(width: AppConstants.spaceSM),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.spaceMD),
+                ],
+
                 // ── Form Card ───────────────────────────────────────────
                 RxCard(
+
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -352,7 +385,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: _showCreateAccountDialog,
+                      onPressed: _goToRegister,
                       child: Text(
                         'Create Account',
                         style: AppTextStyles.labelLarge.copyWith(

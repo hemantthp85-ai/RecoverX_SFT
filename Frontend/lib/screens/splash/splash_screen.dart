@@ -1,12 +1,8 @@
-// ============================================================
-// RecoverX — Splash Screen
-// Shown on cold start. Checks backend health then navigates.
-// ============================================================
-
 import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_routes.dart';
+import '../../providers/user_session.dart';
 import '../../services/health_service.dart';
 import '../../services/api_client.dart';
 
@@ -63,22 +59,25 @@ class _SplashScreenState extends State<SplashScreen>
     if (reachable) {
       setState(() => _statusText = 'Ready');
       await Future.delayed(const Duration(milliseconds: 400));
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.shell);
-      }
     } else {
-      // Backend not reachable — still navigate so user can see app;
-      // individual screens will show connection errors as needed.
       setState(() {
         _statusText = 'Backend unreachable — running in offline mode';
         _hasError = true;
       });
       await Future.delayed(const Duration(milliseconds: 1800));
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.shell);
-      }
+    }
+
+    if (!mounted) return;
+
+    // ── Auth check: go to dashboard if already logged in ──────────
+    final session = UserSession.instance;
+    if (session.isAuthenticated) {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.shell);
+    } else {
+      Navigator.of(context).pushReplacementNamed(AppRoutes.login);
     }
   }
+
 
   @override
   void dispose() {
